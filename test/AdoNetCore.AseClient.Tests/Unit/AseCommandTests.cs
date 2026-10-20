@@ -11,5 +11,12 @@ namespace AdoNetCore.AseClient.Tests.Unit
             command.Dispose();
             command.Dispose();
         }
+
+        // IDbCommand.CommandType: "The default is Text."
+        [Test]
+        public void CommandType_DefaultsToText()
+        {
+            Assert.AreEqual(System.Data.CommandType.Text, new AseCommand().CommandType);
+        }
     }
 }
