@@ -1110,6 +1110,29 @@ SELECT 5";
             }
         }
 
+        // CommandBehavior.CloseConnection: "When the command is executed, the associated Connection object is closed when the
+        // associated DataReader object is closed."
+        [Test]
+        public void ExecuteReader_WithCloseConnection_ClosesTheConnectionWithTheReader()
+        {
+            using (var connection = GetConnection())
+            {
+                connection.Open();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "select data_field from insert_records_tests";
+                    var reader = command.ExecuteReader(CommandBehavior.CloseConnection);
+                    while (reader.Read())
+                    {
+                    }
+
+                    Assert.AreEqual(ConnectionState.Open, connection.State);
+                    reader.Close();
+                    Assert.AreEqual(ConnectionState.Closed, connection.State);
+                }
+            }
+        }
+
         // IDataRecord.GetOrdinal: "If the index of the named field is not found, an IndexOutOfRangeException is thrown."
         [Test]
         public void GetOrdinal_WithAnUnknownName_ThrowsIndexOutOfRange()
