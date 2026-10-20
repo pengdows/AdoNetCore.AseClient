@@ -400,9 +400,10 @@ namespace AdoNetCore.AseClient
 
             var formats = _currentTable?.Formats;
 
+            // IDataRecord.GetOrdinal: "If the index of the named field is not found, an IndexOutOfRangeException is thrown."
             if (formats == null)
             {
-                throw new ArgumentException();
+                throw new IndexOutOfRangeException($"There is no column named {name}.");
             }
 
             name = name
@@ -417,15 +418,12 @@ namespace AdoNetCore.AseClient
                 }
             }
 
-            throw new ArgumentException();
+            throw new IndexOutOfRangeException($"There is no column named {name}.");
         }
 
         public override object GetValue(int i)
         {
-            if (!ValueExists(i))
-            {
-                throw new ArgumentOutOfRangeException();
-            }
+            EnsureValueExists(i);
 
             return IsDBNull(i)
                 ? DBNull.Value
@@ -470,10 +468,7 @@ namespace AdoNetCore.AseClient
 
         public override bool IsDBNull(int i)
         {
-            if (!ValueExists(i))
-            {
-                throw new ArgumentOutOfRangeException();
-            }
+            EnsureValueExists(i);
 
             return CurrentRow.Items[i] == DBNull.Value;
         }
@@ -661,12 +656,22 @@ namespace AdoNetCore.AseClient
         private bool WithinRow => _currentTable != null && _currentRow >= 0 && _currentRow < _currentTable.Rows.Count;
 
         /// <summary>
-        /// Confirm that there is a value at the supplied index (does not confirm whether value is null or set)
+        /// DbDataReader.GetFieldValue: InvalidOperationException when "There is no data ready to be read (for example, the
+        /// first Read() hasn't been called, or it returned false)"; IDataRecord.GetValue: IndexOutOfRangeException when
+        /// "The index passed was outside the range of 0 through FieldCount".
         /// </summary>
-        private bool ValueExists(int i)
+        private void EnsureValueExists(int i)
         {
             var cr = CurrentRow;
-            return cr != null && i >= 0 && i < cr.Items.Length;
+            if (cr == null)
+            {
+                throw new InvalidOperationException("There is no data for the current row. Call Read first, and check that it returned true.");
+            }
+
+            if (i < 0 || i >= cr.Items.Length)
+            {
+                throw new IndexOutOfRangeException($"The column index {i} is outside the range of 0 through {cr.Items.Length - 1}.");
+            }
         }
 
         /// <summary>

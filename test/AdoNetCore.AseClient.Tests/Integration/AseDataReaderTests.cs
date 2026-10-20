@@ -1082,6 +1082,53 @@ SELECT 5";
             yield return new TestCaseData("select convert(varchar, null)", typeof(string));
         }
 
+        // DbDataReader.GetFieldValue: InvalidOperationException when "There is no data ready to be read (for example, the first
+        // Read() hasn't been called, or it returned false)"; IDataRecord.GetValue: IndexOutOfRangeException when "The index
+        // passed was outside the range of 0 through FieldCount".
+        [Test]
+        public void GetValue_WithoutACurrentRow_ThrowsInvalidOperation()
+        {
+            using (var connection = GetConnection())
+            {
+                connection.Open();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "select data_field from insert_records_tests where data_field = 1";
+                    using (var reader = command.ExecuteReader())
+                    {
+                        Assert.Throws<InvalidOperationException>(() => reader.GetValue(0));
+                        Assert.Throws<InvalidOperationException>(() => reader.GetFieldValue<int>(0));
+
+                        Assert.IsTrue(reader.Read());
+                        Assert.AreEqual(1, reader.GetFieldValue<int>(0));
+                        Assert.Throws<IndexOutOfRangeException>(() => reader.GetValue(1));
+
+                        Assert.IsFalse(reader.Read());
+                        Assert.Throws<InvalidOperationException>(() => reader.GetFieldValue<int>(0));
+                    }
+                }
+            }
+        }
+
+        // IDataRecord.GetOrdinal: "If the index of the named field is not found, an IndexOutOfRangeException is thrown."
+        [Test]
+        public void GetOrdinal_WithAnUnknownName_ThrowsIndexOutOfRange()
+        {
+            using (var connection = GetConnection())
+            {
+                connection.Open();
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "select data_field from insert_records_tests";
+                    using (var reader = command.ExecuteReader())
+                    {
+                        Assert.AreEqual(0, reader.GetOrdinal("DATA_FIELD"));
+                        Assert.Throws<IndexOutOfRangeException>(() => reader.GetOrdinal("missing"));
+                    }
+                }
+            }
+        }
+
         [TestCaseSource(nameof(ExecuteReader_ReturnsCorrectRecordsAffected_Cases))]
         public void ExecuteReader_ReturnsCorrectRecordsAffected(string query, int expected)
         {
