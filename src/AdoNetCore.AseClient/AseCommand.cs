@@ -246,6 +246,10 @@ namespace AdoNetCore.AseClient
                 throw new ObjectDisposedException(nameof(AseCommand));
             }
 
+            // IDbCommand.Prepare documents InvalidOperationException when "The Connection is not set. -or- The Connection is not
+            // Open()."
+            EnsureOpenConnection(nameof(Prepare));
+
             // Support for prepared statements is not currently implemented. But to make this a drop in replacement for other DB Providers,
             // it's better to treat this call as a no-op, than to throw a NotImplementedException.
         }
